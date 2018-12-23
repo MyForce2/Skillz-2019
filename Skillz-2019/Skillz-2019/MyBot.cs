@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Collections;
 using ElfKingdom;
 
 namespace MyBot
@@ -93,6 +94,33 @@ namespace MyBot
                 default:
                     return 0;
             }
+        }
+        
+        /// <summary>
+        ///     Returns a list of the enemies in the given range of this game object
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <param name="range"></param>
+        /// <returns></returns>
+        public static List<GameObject> GetEnemiesInRange(this GameObject obj, int range)
+        {
+            List<GameObject> enemiesInRange = new List<GameObject>();
+            foreach(Elf enemyElf in GameVariables.EnemyLivingElves)
+            {
+                if (obj.InRange(enemyElf, range))
+                    enemiesInRange.Add(enemyElf);
+            }
+            foreach (IceTroll iceTroll in GameVariables.EnemyLivingIceTrolls)
+            {
+                if (obj.InRange(iceTroll, range))
+                    enemiesInRange.Add(iceTroll);
+            }
+            foreach (LavaGiant lavaGiant in GameVariables.EnemyLivingLavaGiants)
+            {
+                if (obj.InRange(lavaGiant, range))
+                    enemiesInRange.Add(lavaGiant);
+            }
+            return enemiesInRange;
         }
 
         /// <summary>
@@ -238,6 +266,7 @@ namespace MyBot
             GameVariables.UpdateCurrentGame(game);
 
             DefendWith(GameVariables.DefendingElf);
+            AttackWith(GameVariables.AttackingElf);
 
             // if our portal still stands
             Portal myPortal = GameVariables.MyPortals.FirstOrDefault();
@@ -245,6 +274,38 @@ namespace MyBot
             {
                 myPortal.SummonLavaGiant();
             }
+        }
+
+        public void AttackWith(Elf attacker)
+        {
+            GameObject destination = null;
+            if (GameVariables.EnemyPortals.Length != 0)
+            {
+                if (GameVariables.EnemyPortals.Length == 1)
+                {
+                    destination = GameVariables.EnemyPortals[0];
+                }
+                else
+                {
+                    Dictionary<Portal, int> enemiesNearPortals = new Dictionary<Portal, int>();
+                    var nearestPortal = GameVariables.EnemyPortals.OrderBy(portal => portal.Distance(attacker)).First();
+                    foreach(Portal p in GameVariables.EnemyPortals)
+                    {
+                        enemiesNearPortals[p] = p.GetEnemiesInRange(attacker.AttackRange).Count;
+                    }
+                    var safestPortal = enemiesNearPortals.Keys.OrderBy(portal => enemiesNearPortals[portal]).First();
+                    if (safestPortal != nearestPortal && enemiesNearPortals[safestPortal] != enemiesNearPortals[nearestPortal])
+                        destination = safestPortal;
+                }
+            }
+            else
+            {
+                destination = GameVariables.EnemyCastle;
+            }
+            if (attacker.InAttackRange(destination))
+                attacker.Attack(destination);
+            else
+                attacker.MoveTo(destination);
         }
 
         public void DefendWith(Elf defender)
