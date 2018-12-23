@@ -32,7 +32,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="SkillzAutocomplete">
-      <HintPath>..\..\..\..\..\..\Downloads\SkillzAutocomplete.dll</HintPath>
+      <HintPath>.\SkillzAutocomplete.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
