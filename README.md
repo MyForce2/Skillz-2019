@@ -1,2 +1,2 @@
-# Skillz-2018
-Skillz 2018 C# Bot
+# Skillz-2019
+Skillz 2019 C# Bot
