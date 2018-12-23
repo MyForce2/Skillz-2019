@@ -1,2 +1,2 @@
 # Skillz-2019
-Skillz 2019 C# Bot
+fuck you guys we do javaZZZZZZ
