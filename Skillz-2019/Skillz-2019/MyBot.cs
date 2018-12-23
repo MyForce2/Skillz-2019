@@ -372,10 +372,8 @@ namespace MyBot
                 // first check to see if there's even a lava giant near the castle
                 LavaGiant giantToAttack = (from giant in GameVariables.EnemyLivingLavaGiants
                                            where giant.InRange(GameVariables.MyCastle, giant.AttackRange)
-                                           orderby giant.CurrentHealth
-                                               descending // we want the giant with the most health 
-                                           select giant)
-                    .FirstOrDefault(); //         so he wont die by the time we get there
+                                           orderby giant.CurrentHealth descending // we want the giant with the most health 
+                                           select giant).FirstOrDefault(); //        so he wont die by the time we get there
 
                 // if there are no giants attacking the castle, we return false
                 if (giantToAttack is null)
@@ -408,10 +406,9 @@ namespace MyBot
             {
                 LavaGiant giantToAttack = (from giant in GameVariables.EnemyLivingLavaGiants
                                            where giant.InRange(GameVariables.MyCastle, giant.AttackRange)
-                                           orderby giant.CurrentHealth
-                                               descending // we want the giant with the most health 
-                                           select giant)
-                    .FirstOrDefault(); //         so he wont die by the time we get there
+                                           orderby giant.CurrentHealth descending // we want the giant with the most health 
+                                           select giant).FirstOrDefault(); //        so he wont die by the time we get there
+
 
                 // if there are no lava giants we do nothing
                 if (giantToAttack is null)
