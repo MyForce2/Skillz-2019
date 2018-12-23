@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using ElfKingdom;
 
 namespace MyBot
@@ -28,6 +29,9 @@ namespace MyBot
         public static Portal[] MyPortals { get; private set; }
         public static Portal[] EnemyPortals { get; private set; }
 
+        public static IEnumerable<GameObject> AllLivingEnemies =>
+            ((GameObject[]) GameVariables.EnemyLivingElves).Concat(GameVariables.CurrentGame.GetEnemyCreatures());
+
         #endregion
 
         public static void UpdateCurrentGame(Game game)
@@ -47,13 +51,13 @@ namespace MyBot
                     GameVariables.AttackingElf = myElfElves[1];
                     break;
                 case 1:
-                    {
-                        Elf elf = myElfElves[0];
-                        bool isAttacking = elf.Distance(GameVariables.EnemyCastle) < elf.Distance(GameVariables.MyCastle);
-                        GameVariables.DefendingElf = isAttacking ? null : elf;
-                        GameVariables.AttackingElf = isAttacking ? elf : null;
-                        break;
-                    }
+                {
+                    Elf elf = myElfElves[0];
+                    bool isAttacking = elf.Distance(GameVariables.EnemyCastle) < elf.Distance(GameVariables.MyCastle);
+                    GameVariables.DefendingElf = isAttacking ? null : elf;
+                    GameVariables.AttackingElf = isAttacking ? elf : null;
+                    break;
+                }
                 default:
                     GameVariables.AttackingElf = null;
                     GameVariables.DefendingElf = null;
@@ -158,7 +162,7 @@ namespace MyBot
                 return true;
 
             // ice troll can only attack elves and other ice trolls
-            if (attacker is IceTroll && (attackedObject is Elf || attackedObject is IceTroll))
+            if (attacker is IceTroll && (attackedObject is Elf || attackedObject is Creature))
                 return true;
 
             // the only remaining option is that the attacker is a lava giant and
@@ -232,6 +236,89 @@ namespace MyBot
         public void DoTurn(Game game)
         {
             GameVariables.UpdateCurrentGame(game);
+
+            DefendWith(GameVariables.DefendingElf);
+
+            // if our portal still stands
+            Portal myPortal = GameVariables.MyPortals.FirstOrDefault();
+            if (myPortal != null && myPortal.CanSummonLavaGiant())
+            {
+                myPortal.SummonLavaGiant();
+            }
+        }
+
+        public void DefendWith(Elf defender)
+        {
+            Portal myPortal = GameVariables.MyPortals.FirstOrDefault();
+
+            // if our portal was destroyed
+            if (myPortal is null)
+            {
+                Location newPortalLocation =
+                    GameVariables.MyCastle.Location.Towards(GameVariables.EnemyCastle,
+                                                            GameVariables.MyCastle.Size +
+                                                            GameVariables.CurrentGame.PortalSize);
+
+                if (defender.Location.Equals(newPortalLocation) && defender.CanBuildPortal())
+                    defender.BuildPortal();
+
+                // if were at the location but short on mana, we try to find an enemy to attack in the mean time
+                else if (defender.Location.Equals(newPortalLocation))
+                {
+                    GameObject enemyToAttack = (from enemy in GameVariables.AllLivingEnemies
+                                                where defender.InAttackRange(enemy)
+                                                orderby enemy is LavaGiant ? 0 : 1,
+                                                    enemy.Distance(GameVariables.MyCastle),
+                                                    enemy is Elf ? 0 : 1,
+                                                    enemy.CurrentHealth
+                                                select enemy).FirstOrDefault();
+
+                    // if we have an enemy to attack we attack it
+                    if (enemyToAttack != null)
+                        defender.Attack(enemyToAttack);
+                }
+                // if were not at the portal location we need to go there
+                else
+                {
+                    defender.MoveTo(newPortalLocation);
+                }
+
+                return;
+            }
+
+            // these are the default locations and enemies
+            MapObject locationToDefend = myPortal;
+            GameObject enemyAttacker = GameVariables.EnemyLivingElves.OrderBy(attacker => attacker.Distance(myPortal))
+                                             .FirstOrDefault();
+
+            // if there are no enemy elves we seek to change the default values that were set above
+            if (enemyAttacker is null)
+            {
+                LavaGiant giantToAttack = GameVariables
+                                          .EnemyLivingLavaGiants
+                                          .OrderBy(giant => giant.Distance(GameVariables.MyCastle)).FirstOrDefault();
+                
+                // if there are no lava giants we do nothing
+                if (giantToAttack is null)
+                    return;
+
+                // else we move to attack it
+                enemyAttacker = giantToAttack;
+                locationToDefend = GameVariables.MyCastle;
+            }
+
+            // if we can attack the enemy, we attack it
+            if (defender.InAttackRange(enemyAttacker))
+                defender.Attack(enemyAttacker);
+            // if we cant attack the enemy but he can attack the location were defending, we move towards him
+            else if (enemyAttacker.InRange(locationToDefend, enemyAttacker.GetAttackRange()))
+                defender.MoveTo(enemyAttacker);
+            // if the attacker is not close to the location we defend, we position the defender in the enemy's path to the defended location
+            else
+            {
+                Location defensivePosition = locationToDefend.GetLocation().Towards(enemyAttacker, enemyAttacker.GetAttackRange());
+                defender.MoveTo(defensivePosition);
+            }
         }
     }
 }
