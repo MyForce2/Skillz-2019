@@ -6,7 +6,7 @@ namespace MyBot
     /// <summary>
     ///     Holds all the variables for the current turn
     /// </summary>
-    public static class GameVariables
+    public static class GameVariables 
     {
         #region Properties
 
@@ -29,15 +29,17 @@ namespace MyBot
         public static Portal[] EnemyPortals { get; private set; }
 
         #endregion
+        public static setup(GameVariables game)
+        {
+            GameVariables.CurrentGame = game;
+            GameVariables.MyCastle = game.GetMyCastle();
+            GameVariables.EnemyCastle = game.GetEnemyCastle();
+            GameVariables.EnemyLivingElves = game.GetEnemyLivingElves();
+        }
 
         public static void UpdateCurrentGame(Game game)
         {
-            GameVariables.CurrentGame = game;
-
-            GameVariables.MyCastle = game.GetMyCastle();
-            GameVariables.EnemyCastle = game.GetEnemyCastle();
-
-            GameVariables.EnemyLivingElves = game.GetEnemyLivingElves();
+            setup(game);
             Elf[] myElfElves = game.GetMyLivingElves();
             switch (myElfElves.Length)
             {
@@ -98,6 +100,7 @@ namespace MyBot
         /// <returns></returns>
         public static int GetMaxSpeed(this GameObject obj)
         {
+             
             switch (obj)
             {
                 case Creature creature:
@@ -228,7 +231,7 @@ namespace MyBot
     }
 
     public class Bot : ISkillzBot
-    {
+    {   
         public void DoTurn(Game game)
         {
             GameVariables.UpdateCurrentGame(game);
