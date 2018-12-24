@@ -1,4 +1,3 @@
-﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using ElfKingdom;
@@ -8,7 +7,7 @@ namespace MyBot
     /// <summary>
     ///     Holds all the variables for the current turn
     /// </summary>
-    public static class GameVariables 
+    public static class GameVariables
     {
         #region Properties
 
@@ -31,26 +30,22 @@ namespace MyBot
         public static Portal[] EnemyPortals { get; private set; }
 
         public static IEnumerable<GameObject> AllLivingEnemies =>
-            ((GameObject[]) GameVariables.EnemyLivingElves).Concat(GameVariables.CurrentGame.GetEnemyCreatures());
+            ((GameObject[])GameVariables.EnemyLivingElves).Concat(GameVariables.CurrentGame.GetEnemyCreatures());
 
         #endregion
-
-
 
         /// <summary>
         ///     Updates the current game variables with the most recent ones
         /// </summary>
         /// <param name="game"></param>
-        public static void Setup(Game game){
-            GameVariables.CurrentGame = game;
-            GameVariables.MyCastle = game.GetMyCastle();
-            GameVariables.EnemyCastle = game.GetEnemyCastle();
-            GameVariables.EnemyLivingElves = game.GetEnemyLivingElves();
-        }
-
         public static void UpdateCurrentGame(Game game)
         {
-            Setup(game);
+            GameVariables.CurrentGame = game;
+
+            GameVariables.MyCastle = game.GetMyCastle();
+            GameVariables.EnemyCastle = game.GetEnemyCastle();
+
+            GameVariables.EnemyLivingElves = game.GetEnemyLivingElves();
             Elf[] myElfElves = game.GetMyLivingElves();
             switch (myElfElves.Length)
             {
@@ -60,13 +55,13 @@ namespace MyBot
                     GameVariables.AttackingElf = myElfElves[1];
                     break;
                 case 1:
-                {
-                    Elf elf = myElfElves[0];
-                    bool isAttacking = elf.Distance(GameVariables.EnemyCastle) < elf.Distance(GameVariables.MyCastle);
-                    GameVariables.DefendingElf = isAttacking ? null : elf;
-                    GameVariables.AttackingElf = isAttacking ? elf : null;
-                    break;
-                }
+                    {
+                        Elf elf = myElfElves[0];
+                        bool isAttacking = elf.Distance(GameVariables.EnemyCastle) < elf.Distance(GameVariables.MyCastle);
+                        GameVariables.DefendingElf = isAttacking ? null : elf;
+                        GameVariables.AttackingElf = isAttacking ? elf : null;
+                        break;
+                    }
                 default:
                     GameVariables.AttackingElf = null;
                     GameVariables.DefendingElf = null;
@@ -93,15 +88,11 @@ namespace MyBot
         /// <returns></returns>
         public static int GetAttackRange(this GameObject obj)
         {
-            switch (obj)
-            {
-                case Creature creature:
-                    return creature.AttackRange;
-                case Elf elf:
-                    return elf.AttackRange;
-                default:
-                    return 0;
-            }
+            if (obj is Creature creature)
+                return creature.AttackRange;
+            if (obj is Elf elf)
+                return elf.AttackRange;
+            return 0;
         }
 
         /// <summary>
@@ -124,16 +115,11 @@ namespace MyBot
         /// <returns></returns>
         public static int GetMaxSpeed(this GameObject obj)
         {
-             
-            switch (obj)
-            {
-                case Creature creature:
-                    return creature.MaxSpeed;
-                case Elf elf:
-                    return elf.MaxSpeed;
-                default:
-                    return 0;
-            }
+            if (obj is Creature creature)
+                return creature.MaxSpeed;
+            if (obj is Elf elf)
+                return elf.MaxSpeed;
+            return 0;
         }
 
         /// <summary>
@@ -143,15 +129,13 @@ namespace MyBot
         /// <returns></returns>
         public static int GetSuffocationPerTurn(this GameObject obj)
         {
-            switch (obj)
-            {
-                case IceTroll troll:
-                    return troll.SuffocationPerTurn;
-                case LavaGiant lavaGiant:
-                    return lavaGiant.SuffocationPerTurn;
-                default:
-                    return 0;
-            }
+            if (obj is IceTroll iceTroll)
+                return iceTroll.SuffocationPerTurn;
+            if (obj is LavaGiant lavaGiant)
+                return lavaGiant.SuffocationPerTurn;
+            if (obj is Elf elf)
+                return elf.AttackRange;
+            return 0;
         }
 
         /// <summary>
@@ -161,15 +145,11 @@ namespace MyBot
         /// <returns></returns>
         public static int GetAttackMultiplier(this GameObject obj)
         {
-            switch (obj)
-            {
-                case Creature creature:
-                    return creature.AttackMultiplier;
-                case Elf elf:
-                    return elf.AttackMultiplier;
-                default:
-                    return 0;
-            }
+            if (obj is Creature creature)
+                return creature.AttackMultiplier;
+            if (obj is Elf elf)
+                return elf.AttackMultiplier;
+            return 0;
         }
 
         /// <summary>
@@ -190,7 +170,7 @@ namespace MyBot
         public static int TurnsToReach(this GameObject obj, int distance)
         {
             int speed = obj.GetMaxSpeed();
-            if (distance % speed is 0)
+            if (distance % speed == 0)
                 return distance / speed;
 
             // we account for the remainder with the + 1
@@ -255,9 +235,6 @@ namespace MyBot
     }
 
     public class Bot : ISkillzBot
-<<<<<<< HEAD
-    {   
-=======
     {
         /// <summary>
         ///     The method that performs the current turn for our bot.
@@ -267,7 +244,6 @@ namespace MyBot
         ///     We do this by defending our portals and destroying the enemy portals.
         /// </summary>
         /// <param name="game"></param>
->>>>>>> 009b8557d6c41d351d0288e232cc551ab8ddba6d
         public void DoTurn(Game game)
         {
             try
@@ -275,14 +251,13 @@ namespace MyBot
                 GameVariables.UpdateCurrentGame(game);
 
                 // perform actions with the elves
-                DefendWith(GameVariables.DefendingElf);
                 AttackWith(GameVariables.AttackingElf);
 
                 // if our portal still stands we try to summon lava giants
                 Portal myPortal = GameVariables.MyPortals.FirstOrDefault();
                 if (myPortal != null && myPortal.CanSummonLavaGiant()) myPortal.SummonLavaGiant();
             }
-            catch (Exception)
+            catch (System.Exception)
             { } // make sure the bot doesn't crash
         }
 
@@ -292,7 +267,7 @@ namespace MyBot
         /// <param name="attacker"></param>
         public void AttackWith(Elf attacker)
         {
-            if (attacker is null)
+            if (attacker == null)
                 return;
 
             GameObject destination = null;
@@ -322,125 +297,6 @@ namespace MyBot
                 attacker.Attack(destination);
             else
                 attacker.MoveTo(destination);
-        }
-
-        /// <summary>
-        ///     performs the defending actions with the defender elf
-        /// </summary>
-        /// <param name="defender"></param>
-        public void DefendWith(Elf defender)
-        {
-            if(defender is null)
-                return;
-
-            Portal myPortal = GameVariables.MyPortals.FirstOrDefault();
-
-            // if our portal was destroyed
-            if (myPortal is null)
-            {
-                Location newPortalLocation =
-                    GameVariables.MyCastle.Location.Towards(GameVariables.EnemyCastle,
-                                                            GameVariables.MyCastle.Size +
-                                                            GameVariables.CurrentGame.PortalSize);
-
-                if (defender.Location.Equals(newPortalLocation) && defender.CanBuildPortal())
-                    defender.BuildPortal();
-
-                // if were at the location but short on mana, we try to find an enemy to attack in the mean time
-                else if (defender.Location.Equals(newPortalLocation))
-                {
-                    GameObject enemyToAttack = (from enemy in GameVariables.AllLivingEnemies
-                                                where defender.InAttackRange(enemy)
-                                                orderby enemy is LavaGiant ? 0 : 1,
-                                                    enemy.Distance(GameVariables.MyCastle),
-                                                    enemy is Elf ? 0 : 1,
-                                                    enemy.CurrentHealth
-                                                select enemy).FirstOrDefault();
-
-                    // if we have an enemy to attack we attack it
-                    if (enemyToAttack != null)
-                        defender.Attack(enemyToAttack);
-                }
-                // if were not at the portal location we need to go there
-                else
-                    defender.MoveTo(newPortalLocation);
-
-                return;
-            }
-
-            // these are the default locations and enemies
-            MapObject locationToDefend = myPortal;
-            GameObject enemyAttacker = GameVariables.EnemyLivingElves.OrderBy(attacker => attacker.Distance(myPortal))
-                                                    .FirstOrDefault();
-
-            // this is a local function
-            // this function checks to see if the defender should leave the portal to defend
-            // the castle
-            bool ShouldAttackLavaGiants()
-            {
-                // first check to see if there's even a lava giant near the castle
-                LavaGiant giantToAttack = (from giant in GameVariables.EnemyLivingLavaGiants
-                                           where giant.InRange(GameVariables.MyCastle, giant.AttackRange)
-                                           orderby giant.CurrentHealth descending // we want the giant with the most health 
-                                           select giant).FirstOrDefault(); //        so he wont die by the time we get there
-
-                // if there are no giants attacking the castle, we return false
-                if (giantToAttack is null)
-                    return false;
-
-                Location defensivePosition =
-                    locationToDefend.GetLocation().Towards(enemyAttacker, enemyAttacker.GetAttackRange());
-                int turnsToAttackGiant = defender.TurnsToReach(defender.DistanceToAttackPosition(giantToAttack));
-
-                // these are the number of turns it takes to come back from attacking the giant to the defensive position
-                int turnsToComeback = defender.TurnsToReach(giantToAttack.Distance(defensivePosition));
-
-                // if the giant will die by the time the elf will come for him, we rather not go after him
-                if (giantToAttack.CurrentHealth - turnsToAttackGiant * giantToAttack.SuffocationPerTurn >= 0)
-                    return false;
-
-                // the number of turns it takes for the enemy to reach our portal
-                int turnsForEnemyToAttackPortal =
-                    enemyAttacker.TurnsToReach(enemyAttacker.DistanceToAttackPosition(locationToDefend));
-
-                // the number of turns it takes to go from the current position, attack the giant(at least 1 turn) and comeback
-                int turnsToAttackGiantAndComeback = turnsToAttackGiant + turnsToComeback + 1;
-
-                // if we can attack the giant and comeback before the enemy can reach our portal, we should do so
-                return turnsToAttackGiantAndComeback < turnsForEnemyToAttackPortal;
-            }
-
-            // if there are no enemy elves or we should attack lava giants we seek to change the default values that were set above
-            if (enemyAttacker is null || ShouldAttackLavaGiants())
-            {
-                LavaGiant giantToAttack = (from giant in GameVariables.EnemyLivingLavaGiants
-                                           where giant.InRange(GameVariables.MyCastle, giant.AttackRange)
-                                           orderby giant.CurrentHealth descending // we want the giant with the most health 
-                                           select giant).FirstOrDefault(); //        so he wont die by the time we get there
-
-
-                // if there are no lava giants we do nothing
-                if (giantToAttack is null)
-                    return;
-
-                // else we move to attack it
-                enemyAttacker = giantToAttack;
-                locationToDefend = GameVariables.MyCastle;
-            }
-
-            // if we can attack the enemy, we attack it
-            if (defender.InAttackRange(enemyAttacker))
-                defender.Attack(enemyAttacker);
-            // if we cant attack the enemy but he can attack the location were defending, we move towards him
-            else if (enemyAttacker.InRange(locationToDefend, enemyAttacker.GetAttackRange()))
-                defender.MoveTo(enemyAttacker);
-            // if the attacker is not close to the location we defend, we position the defender in the enemy's path to the defended location
-            else
-            {
-                Location defensivePosition =
-                    locationToDefend.GetLocation().Towards(enemyAttacker, enemyAttacker.GetAttackRange());
-                defender.MoveTo(defensivePosition);
-            }
         }
     }
 }
