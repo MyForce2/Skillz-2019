@@ -44,7 +44,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Circle.cs" />
+    <Compile Include="CreatableObject.cs" />
+    <Compile Include="ElfExtensions.cs" />
+    <Compile Include="GameObjectExtensions.cs" />
+    <Compile Include="GameState.cs" />
+    <Compile Include="LocationFinder.cs" />
     <Compile Include="MyBot.cs" />
+    <Compile Include="PortalExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
