@@ -25,7 +25,7 @@ namespace MyBot
         public const int NEUTRAL_RADIUS = 4000;
         public const int ATTACKING_RADIUS = 1500;
 
-        private static bool CastleUnderAttack()
+        public static bool CastleUnderAttack()
         {
             var elfAttacking = GameState.EnemyLivingElves.Count(elf => elf.InAttackRange(GameState.MyCastle));
             var giantsAttacking =
@@ -42,10 +42,10 @@ namespace MyBot
         /// <param name="obj"></param>
         /// <param name="exceptions"></param>
         /// <returns></returns>
-        private static bool SafeNotToMove(this MapObject obj, params GameObject[] exceptions) =>
+        public static bool SafeNotToMove(this MapObject obj, params GameObject[] exceptions) =>
             LocationFinder.GetPossibleAttackers(obj, exceptions: exceptions).Count == 0;
 
-        private static bool ShouldAttack(this Elf e, GameObject target)
+        public static bool ShouldAttack(this Elf e, GameObject target)
         {
             var possibleAttackers = LocationFinder.GetPossibleAttackers(e, exceptions: target);
             if (possibleAttackers.Count > 0)
@@ -77,7 +77,7 @@ namespace MyBot
         /// <param name="defenceOptimal"></param>
         /// <param name="attackOptimal"></param>
         /// <returns></returns>
-        private static bool ShouldBuildPortal(this Elf e, Location defenseOptimal, Location attackOptimal)
+        public static bool ShouldBuildPortal(this Elf e, Location defenseOptimal, Location attackOptimal)
         {
             if (!e.SafeNotToMove())
                 return false;
@@ -106,7 +106,7 @@ namespace MyBot
         /// </summary>
         /// <param name="e"></param>
         /// <param name="optimal"></param>
-        private static bool ShouldAttemptToBuildFountain(this Elf e, Location optimal)
+        public static bool ShouldAttemptToBuildFountain(this Elf e, Location optimal)
         {
             return GameState.AttackingPortals == 0 &&
                    (GameState.Game.GetMyManaFountains().Length < ElfExtensions.MAX_FOUNTAINS ||
@@ -119,7 +119,7 @@ namespace MyBot
         /// <param name="e"></param>
         /// <param name="optimal"></param>
         /// <returns></returns>
-        private static bool ShouldBuildFountain(this Elf e, Location optimal)
+        public static bool ShouldBuildFountain(this Elf e, Location optimal)
         {
             return e.ShouldAttemptToBuildFountain(optimal) &&
                    e.Location.Distance(optimal) < e.MaxSpeed;
@@ -131,7 +131,7 @@ namespace MyBot
         /// </summary>
         /// <param name="e"> elf object </param>
         /// <param name="target"> target MapObject to move to </param>
-        private static void MoveSafely(this Elf e, MapObject target)
+        public static void MoveSafely(this Elf e, MapObject target)
         {
             Location location;
             if (target is IceTroll || target is Elf && !CastleUnderAttack())
@@ -175,7 +175,7 @@ namespace MyBot
         /// <param name="isDefensive"></param>
         /// <param name="exceptions"></param>
         /// <returns></returns>
-        private static MapObject GetMoveTarget(this Elf e, bool isDefensive, params GameObject[] exceptions)
+        public static MapObject GetMoveTarget(this Elf e, bool isDefensive, params GameObject[] exceptions)
         {
             IEnumerable<GameObject> allTargets = ((GameObject[])GameState.Game.GetEnemyPortals())
                                                  .Concat(GameState.Game.GetEnemyManaFountains())
@@ -218,159 +218,5 @@ namespace MyBot
                                        .OrderBy(p => p.Distance(GameState.MyCastle)).FirstOrDefault();
             return enemyPortal;
         }
-        /// <summary>
-        /// does elf turn logic
-        /// PLACEHOLDER
-        /// </summary>
-        public static void DoElfTurn(this Elf e)
-        {
-            System.Console.WriteLine("here");
-            if (e.IsBuilding)
-            { //already building
-                System.Console.WriteLine("elf does nothing");
-                return;
-            }
-
-            bool isDefensive = true; // make sure only one elf focuses on fountains at the start of the game
-            if (GameState.MyLivingElves.Count > 1)
-            {
-                isDefensive = GameState.MyLivingElves.OrderBy(elf => elf.Distance(GameState.MyCastle))
-                                           .FirstOrDefault().Equals(e);
-            }
-            else
-            {
-                isDefensive = e.Distance(GameState.MyCastle) < e.Distance(GameState.EnemyCastle);
-            }
-
-            Location optimalFountainLocation = e.GetOptimalFountainLocation(), attackOptimalLocation = e.GetOptimalPortalLocation(false),
-                    defenseOptimaLocation = e.GetOptimalPortalLocation(true);
-
-
-            // Mana Fountain building logic
-            if (isDefensive && GameState.Game.CanBuildManaFountainAt(e.Location) && e.ShouldBuildFountain(optimalFountainLocation))
-            {
-                System.Console.WriteLine("fountain");
-                // if we should and can build fountain, build it
-                if (e.CanBuildManaFountain() && GameState.HasManaFor(CreatableObject.ManaFountain))
-                {
-                    e.BuildManaFountain();
-                    return;
-                }
-
-                if (e.SafeNotToMove()) // make sure we can wait for mana
-                {
-                    // if we should build but there is no mana, we don't move and save the mana for the next turn
-                    // so we can build it in the following turns
-                    GameState.SaveManaFor(CreatableObject.ManaFountain);
-                    // if we don't move from the position we at least attack
-                    // so we don't completely waste the turn
-                    GameObject attackObject = e.GetAttackTarget();
-                    if (attackObject != null)
-                    {
-                        e.Attack(attackObject);
-                    }
-                    System.Console.WriteLine("saved");
-                    return;
-                }
-            }
-            if (isDefensive && e.Distance(GameState.MyCastle) <= ElfExtensions.DEFENSIVE_RADIUS &&
-                GameState.Game.GetMyManaFountains().Length < ElfExtensions.MAX_FOUNTAINS && e.ShouldAttemptToBuildFountain(optimalFountainLocation))
-            {
-                System.Console.WriteLine("fountain move");
-                e.MoveSafely(optimalFountainLocation);
-                return;
-            }
-
-            // Portal building logic
-            if (GameState.Game.CanBuildPortalAt(e.Location) && e.ShouldBuildPortal(defenseOptimaLocation, attackOptimalLocation))
-            {
-                System.Console.WriteLine("portal");
-                // if we should and can build fountain, build it
-                if (e.CanBuildPortal() && GameState.HasManaFor(CreatableObject.Portal))
-                {
-                    e.BuildPortal();
-                    return;
-                }
-
-                if (e.SafeNotToMove()) // make sure we can wait for mana
-                {
-                    // if we should build but there is no mana, we don't move and save the mana for the next turn
-                    // so we can build it in the following turns
-                    GameState.SaveManaFor(CreatableObject.Portal);
-                    // if we don't move from the position we at least attack
-                    // so we don't completely waste the turn
-                    GameObject attackObject = e.GetAttackTarget();
-                    if (attackObject != null)
-                    {
-                        e.Attack(attackObject);
-                    }
-                    System.Console.WriteLine("saved");
-                    return;
-                }
-            }
-
-            if (e.Distance(GameState.MyCastle) <= ElfExtensions.DEFENSIVE_RADIUS &&
-                (GameState.DefensivePortals < ElfExtensions.MAX_DEFENSIVE_PORTALS ||
-                 GameState.CurrentMana > ElfExtensions.EXCESS_MANA * 2) && defenseOptimaLocation != null)
-            {
-                System.Console.WriteLine("portal d move");
-                System.Console.WriteLine(e.ShouldBuildPortal(defenseOptimaLocation, attackOptimalLocation));
-                e.MoveSafely(defenseOptimaLocation);
-                return;
-            }
-
-            // check to see if we can attack any portal or elves or the castle or fountains
-            GameObject target = e.GetAttackTarget();
-            System.Console.WriteLine(target);
-            if (target != null && e.ShouldAttack(target))
-            {
-                System.Console.WriteLine("a");
-                e.Attack(target);
-                return;
-            }
-
-            var moveTarget = e.GetMoveTarget(isDefensive);
-            if (isDefensive)
-            {
-                System.Console.WriteLine(moveTarget);
-                if (moveTarget != null && target != null &&
-                    (moveTarget.Equals(target) || (moveTarget is Elf && target is Elf)))
-                {
-                    // we attack it anyway
-                    e.Attack(target);
-                    return;
-                }
-
-                if (moveTarget != null)
-                {
-                    e.MoveSafely(moveTarget);
-                    return;
-                }
-            }
-            else if (moveTarget != null && !moveTarget.Equals(target) &&
-                    (e.Distance(moveTarget) < e.Distance(attackOptimalLocation) ||
-                     GameState.AttackingPortals > 0))
-            {
-                System.Console.WriteLine(moveTarget);
-                e.MoveSafely(moveTarget);
-                return;
-            }
-
-
-            // if we got nothing to attack we move to build an attacking portal
-            if (e.Distance(GameState.EnemyCastle) <= ElfExtensions.ATTACKING_RADIUS &&
-                (GameState.AttackingPortals < ElfExtensions.MAX_ATTACKING_PORTALS ||
-                 GameState.CurrentMana > ElfExtensions.EXCESS_MANA * 2) && attackOptimalLocation != null)
-            {
-                System.Console.WriteLine("portal a move");
-                e.MoveSafely(attackOptimalLocation);
-                return;
-            }
-
-            // if we don't have any portal/elf to attack we move towards the castle
-            e.MoveSafely(GameState.EnemyCastle.Location.Towards(e, e.AttackRange));
-        }
-
-
     }
 }

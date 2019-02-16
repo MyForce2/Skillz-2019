@@ -50,6 +50,7 @@
     <Compile Include="GameObjectExtensions.cs" />
     <Compile Include="GameState.cs" />
     <Compile Include="LocationFinder.cs" />
+    <Compile Include="Mission.cs" />
     <Compile Include="MyBot.cs" />
     <Compile Include="PortalExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
