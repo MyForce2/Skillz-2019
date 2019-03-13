@@ -40,34 +40,6 @@ namespace MyBot
         }
 
         /// <summary>
-        ///     returns the optimal location for Elf e to build a mana fountain.
-        ///     if no suitable location is found, null is returned.
-        /// </summary>
-        /// <param name="e"></param>
-        /// <returns></returns>
-        public static Location GetOptimalFountainLocation(this Elf e)
-        {
-            const int maximumRadius = ElfExtensions.DEFENSIVE_RADIUS;
-            for (int radius = GameState.Game.CastleSize + GameState.Game.ManaFountainSize + 10;
-                 radius <= maximumRadius;
-                 radius += 200)
-            {
-                var circle = new Circle(GameState.MyCastle.Location, radius);
-                Location best = (from location in circle.GetCircleLocations()
-                                 where GameState.Game.CanBuildManaFountainAt(location)
-                                 orderby e.Distance(location) <= e.MaxSpeed ? e.MaxSpeed : e.Distance(location),
-                                     DistanceSum(GameState.EnemyPortals, location) descending,
-                                     location.Distance(GameState.EnemyCastle) descending
-                                 select location).FirstOrDefault();
-                if (best != null)
-                    return best;
-            }
-
-            return null;
-
-        }
-
-        /// <summary>
         ///     Returns the safest path (the next step) for obj to reach destination.
         ///     Any enemy exceptions given will not be taken into consideration,
         ///     for example pass exceptions when your destination is an enemy.
@@ -79,7 +51,10 @@ namespace MyBot
         public static Location GetSafestPath(this GameObject obj, MapObject destination, params GameObject[] exceptions)
         {
             var circle = new Circle(obj.Location, obj.GetMaxSpeed());
-            return (from location in circle.GetCircleLocations()
+            var locations = circle.GetCircleLocations().ToList();
+            if (obj.InRange(destination, obj.GetMaxSpeed()))
+                locations.Add(destination.GetLocation());
+            return (from location in locations
                     orderby GetPossibleAttackers(location, obj, exceptions).Count,
                         location.Distance(destination)
                     select location).FirstOrDefault();
@@ -100,12 +75,16 @@ namespace MyBot
         public static List<GameObject> GetPossibleAttackers(MapObject location, MapObject enemyDestination = null, params GameObject[] exceptions)
         {
             enemyDestination = enemyDestination ?? location;
+            int size = 0;
+            if (location is Building b)
+                size = b.Size;
             var enemies = ((IEnumerable<GameObject>)GameState.EnemyLivingElves).Concat(GameState.EnemyLivingIceTrolls);
             return (from enemy in enemies
                     let nextTurnLocation = enemy.Location.Towards(enemyDestination, enemy.GetMaxSpeed())
                     where !exceptions.Contains(enemy) &&
-                          nextTurnLocation.InRange(location, enemy.GetAttackRange()) &&
-                          enemy.CurrentHealth != enemy.GetSuffocationPerTurn()
+                          nextTurnLocation.InRange(location, enemy.GetAttackRange() + size) &&
+                          enemy.CurrentHealth != enemy.GetSuffocationPerTurn() &&
+                          (!(enemy is IceTroll) || !(location is GameObject) || ((IceTroll)enemy).GetTarget().Equals((GameObject)location))
                     select enemy).ToList();
         }
 
@@ -115,7 +94,7 @@ namespace MyBot
         /// <param name="objects"></param>
         /// <param name="location"></param>
         /// <returns></returns>
-        private static int DistanceSum(IEnumerable<MapObject> objects, Location location) =>
-            objects.Select(o => o.Distance(location)).DefaultIfEmpty(0).Sum();
+        private static int DistanceSum(IEnumerable<GameObject> objects, Location location) =>
+            objects.Select(o => o.TurnsToReach(location)).DefaultIfEmpty(0).Sum();
     }
 }

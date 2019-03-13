@@ -16,6 +16,12 @@
                     return GameState.Game.IceTrollCost;
                 case CreatableObject.LavaGiant:
                     return GameState.Game.LavaGiantCost;
+                case CreatableObject.SpeedUp:
+                    return GameState.Game.SpeedUpCost;
+                case CreatableObject.Invisibility:
+                    return GameState.Game.InvisibilityCost;
+                case CreatableObject.Tornado:
+                    return GameState.Game.TornadoCost;
                 default:
                     return 0;
             }
@@ -28,6 +34,9 @@
         Portal = 0,
         ManaFountain = 1,
         IceTroll = 2,
-        LavaGiant = 3
+        LavaGiant = 3,
+        SpeedUp = 4,
+        Invisibility = 5,
+        Tornado = 6
     }
 }

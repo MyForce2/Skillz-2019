@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using ElfKingdom;
 
@@ -5,65 +6,57 @@ namespace MyBot
 {
     public class Bot : ISkillzBot
     {
-        public const bool UseSpecificStrategies = false;
+        public const bool UseSpecificStrategies = true;
 
         public static Game Game
         {
             get; private set;
         }
 
-        /// <summary>
-        ///     logic for the Destroy bot from week 1
-        /// </summary>
-        /// <param name="game"></param>
-        public void DestroyLogic(Game game)
+        public static Dictionary<Elf, Dictionary<Elf, int>> LastTurnDistances =
+            new Dictionary<Elf, Dictionary<Elf, int>>();
+
+        private static void UpdateLastTurnDistances()
         {
-            
-            foreach (Elf elf in game.GetMyLivingElves())
-            { 
-                ManaFountain fountain = game.GetEnemyManaFountains().FirstOrDefault();
-                if (fountain == null)
-                    return;
-                if (elf.InAttackRange(fountain))
-                    elf.Attack(fountain);
-                else elf.MoveTo(fountain);
+            Bot.LastTurnDistances.Clear();
+            foreach (Elf e in GameState.MyLivingElves.Concat(GameState.EnemyLivingElves))
+            {
+                Bot.LastTurnDistances[e] = new Dictionary<Elf, int>();
+            }
+
+            foreach (Elf myLivingElf in GameState.MyLivingElves)
+            {
+                foreach (Elf enemyLivingElf in GameState.EnemyLivingElves)
+                {
+                    if(enemyLivingElf.Invisible) continue;
+
+                    int distance = myLivingElf.Distance(enemyLivingElf);
+                    Bot.LastTurnDistances[myLivingElf][enemyLivingElf] = distance;
+                    Bot.LastTurnDistances[enemyLivingElf][myLivingElf] = distance;
+                }
             }
         }
-
-        /// <summary>
-        ///     checks if we are facing destroy bot
-        /// </summary>
-        /// <param name="game"></param>
-        /// <returns></returns>
-        public bool IsDestroyBot(Game game) => Bot.UseSpecificStrategies && game.DefaultManaPerTurn == 0 && game.GetMyMana() == 0;
 
 
         public void DoTurn(Game game)
         {
             try
             {
-                // this will only happen when we face Destroy Bot
-                if (IsDestroyBot(game))
-                {
-                    DestroyLogic(game);
-                    return;
-                }
-
-                System.Console.WriteLine("dist: {0}", game.GetMyCastle().Distance(game.GetEnemyCastle()));
                 Bot.Game = game;
                 GameState.Update(game);
+                System.Console.WriteLine(ElfExtensions.ATTACKING_RADIUS);
                 MissionExtensions.UpdateOptimalLocations();
                 System.Console.WriteLine("elf count: {0}", game.GetMyLivingElves().Length);
-                foreach (Elf e in game.GetMyLivingElves())
+
+                var executedMissions = game.GetMyLivingElves().ExecuteMissions();
+                foreach (Elf e in executedMissions.Keys)
                 {
-                    if(e.IsBuilding)
-                        continue;
-                    Mission m = e.GetBestMission();
-                    m.ExecuteWith(e);
+                    Mission m = executedMissions[e];
                     System.Console.WriteLine($"{e} : {m}");
                 }
 
                 PortalExtensions.DoPortalsTurn();
+                UpdateLastTurnDistances();
             }
             catch (System.Exception e) { System.Console.WriteLine(e); }
 

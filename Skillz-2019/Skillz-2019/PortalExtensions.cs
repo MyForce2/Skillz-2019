@@ -7,6 +7,25 @@ namespace MyBot
     public static class PortalExtensions
     {
 
+        public static bool HasPortalAdvantage()
+        {
+            Portal closestEnemyPortal = GetBestPortal(true);
+            if (closestEnemyPortal == null)
+                return true;
+
+            int enemyTurnsToReach =
+                closestEnemyPortal.TurnsToReach(GameState.MyCastle.Location.Towards(closestEnemyPortal,
+                                                                                    GameState.MyCastle.Size +
+                                                                                    GameState
+                                                                                        .Game.LavaGiantAttackRange));
+            Portal closestPortal = GetBestPortal(false);
+            int turnsToReach = closestPortal?.TurnsToReach(GameState.EnemyCastle.Location.Towards(closestPortal,
+                                                                                                  GameState.EnemyCastle.Size +
+                                                                                                  GameState.Game.LavaGiantAttackRange)) ?? int.MaxValue;
+            return turnsToReach < enemyTurnsToReach && (GameState.Game.LavaGiantMaxHealth - turnsToReach * GameState.Game.LavaGiantSuffocationPerTurn) > GameState.Game.LavaGiantMaxHealth / 4;
+
+        }
+
         /// <summary>
         ///     returns the number of turns it takes to travel the given distance
         /// </summary>
@@ -24,6 +43,12 @@ namespace MyBot
             return distance / speed + 1;
         }
 
+        public static Portal GetBestPortal(bool isEnemy)
+        {
+            return isEnemy ? GameState.EnemyPortals.OrderBy(portal => portal.TurnsToReach(GameState.MyCastle.Location.Towards(portal, GameState.MyCastle.Size + GameState.Game.LavaGiantAttackRange))).FirstOrDefault() :
+                GameState.MyPortals.OrderBy(portal => portal.TurnsToReach(GameState.EnemyCastle.Location.Towards(portal, GameState.EnemyCastle.Size + GameState.Game.LavaGiantAttackRange))).FirstOrDefault();
+        }
+
         /// <summary>
         ///     returns true if this location is a viable place for an attacking portal
         /// </summary>
@@ -31,8 +56,8 @@ namespace MyBot
         /// <returns></returns>
         public static bool CanAttackFrom(this MapObject obj)
         {
-            return obj.TurnsToReach(GameState.EnemyCastle, 
-                                    GameState.Game.LavaGiantMaxSpeed) * GameState.Game.LavaGiantSuffocationPerTurn < GameState.Game.LavaGiantMaxHealth;
+            return (obj.TurnsToReach(GameState.EnemyCastle.Location.Towards(obj, GameState.EnemyCastle.Size + GameState.Game.LavaGiantAttackRange),
+                                    GameState.Game.LavaGiantMaxSpeed) + 1) * GameState.Game.LavaGiantSuffocationPerTurn < GameState.Game.LavaGiantMaxHealth * 3 / 4;
         }
 
         /// <summary>
@@ -43,6 +68,8 @@ namespace MyBot
         /// <returns></returns>
         private static bool TrySummonLavaGiant(this Portal p)
         {
+            if (GameState.Game.GetMyself().ManaPerTurn == 0 && GameState.Game.GetMyMana() >= CreatableObject.ManaFountain.GetCost())
+                return false;
             if (!p.CanAttackFrom())
                 return false;
             if (!(p.CanSummonLavaGiant() && GameState.HasManaFor(CreatableObject.LavaGiant)))
@@ -58,26 +85,103 @@ namespace MyBot
         /// </summary>
         /// <param name="p"> portal to summon from </param>
         /// <returns></returns>
-        private static bool TrySummonIceTroll(this Portal p)
+        private static bool TrySummonIceTroll(this Portal p, bool againstElves = true)
         {
-            if (!(p.CanSummonIceTroll() && GameState.HasManaFor(CreatableObject.IceTroll)))
+            if (GameState.Game.GetMyself().ManaPerTurn == 0 && GameState.Game.GetMyMana() >= CreatableObject.ManaFountain.GetCost())
+                return false;
+            if (!(p.CanSummonIceTroll() && GameState.HasManaFor(CreatableObject.IceTroll) && (!againstElves || GameState.EnemyLivingElves.Count != 0)))
                 return false;
             p.SummonIceTroll();
             return true;
         }
 
-        //returns amount of (living and in summon) friendly lava giants
-        private static int GetMyTotalGiantsCount() => Bot.Game.GetMyLavaGiants().Length + Bot.Game.GetMyPortals().Count(x => (x.IsSummoning && x.CurrentlySummoning.Equals("LavaGiant")));
-        //returns amount of (living and in summon) friendly lava giants                                                                                     
-        private static int GetMyTotalTrollsCount() => Bot.Game.GetMyIceTrolls().Length + Bot.Game.GetMyPortals().Count(x => (x.IsSummoning && x.CurrentlySummoning.Equals("IceTroll")));
-
-        //returns amount of (living and in summon) enemy lava giants
-        private static int GetEnemyTotalGiantsCount() => Bot.Game.GetEnemyLavaGiants().Length + Bot.Game.GetEnemyPortals().Count(x => (x.IsSummoning && x.CurrentlySummoning.Equals("LavaGiant")));
-        //returns amount of (living and in summon) enemy lava giants                                                                                     
-        private static int GetEnemyTotalTrollsCount() => Bot.Game.GetEnemyIceTrolls().Length + Bot.Game.GetEnemyPortals().Count(x => (x.IsSummoning && x.CurrentlySummoning.Equals("IceTroll")));
+        public static bool TrySummonTornado(this Portal p)
+        {
+            if (!(p.CanSummonTornado() && GameState.HasManaFor(CreatableObject.Tornado)))
+                return false;
+            p.SummonTornado();
+            return true;
+        }
 
         //returns portals not currently summoning
         private static List<Portal> GetFreePortals() => Bot.Game.GetMyPortals().Where(x => (!x.IsSummoning)).ToList();
+
+        public static bool IsGettingAttacked(this Portal portal)
+        {
+            double savingDuration = 1.0 * (GameState.Game.IceTrollCost - GameState.CurrentMana) /
+                                    GameState.Game.GetMyself().ManaPerTurn;
+            savingDuration = System.Math.Ceiling(savingDuration);
+            int duration = System.Math.Max(0, (int)savingDuration);
+            int possibleElfAttackers = (from elf in GameState.EnemyLivingElves
+                                        where elf.InRange(portal.Location.Towards(elf, elf.AttackRange + portal.Size),
+                                                          elf.MaxSpeed * (GameState.Game.IceTrollSummoningDuration + duration))
+                                        select elf).Count();
+
+            int possibleTornadoesAttackers = (from tornado in GameState.EnemyLivingTornadoes
+                                              where portal.Equals(tornado.GetTornadoTarget(true)) &&
+                                                    tornado.WillReachTarget()
+                                              select tornado).Count();
+
+            return possibleElfAttackers + possibleTornadoesAttackers > 0;
+        }
+
+        public static bool ShouldDefendCastle()
+        {
+            if (GameState.AttackingPortals > 0 || !ElfExtensions.CastleUnderAttack())
+                return false;
+
+            Portal closestEnemyPortal = GetBestPortal(true);
+            if (closestEnemyPortal == null)
+                return false;
+
+            int enemyTurnsToReach =
+                closestEnemyPortal.TurnsToReach(GameState.MyCastle.Location.Towards(closestEnemyPortal,
+                                                                                    GameState.MyCastle.Size +
+                                                                                    GameState
+                                                                                        .Game.LavaGiantAttackRange));
+            Portal closestPortal = GetBestPortal(false);
+            int turnsToReach = closestPortal?.TurnsToReach(GameState.EnemyCastle.Location.Towards(closestEnemyPortal,
+                                                                                                  GameState.EnemyCastle.Size +
+                                                                                                  GameState
+                                                                                                      .Game.LavaGiantAttackRange)) ?? int.MaxValue;
+            return GameState.MyCastle.CurrentHealth < GameState.EnemyCastle.CurrentHealth;
+        }
+
+        public static bool ShouldUseTornado(this Portal p, bool aggressiveUse)
+        {
+            Building target = p.GetTornadoTarget();
+            if (target == null || target?.HasTornadoIsEnRoute() == true || HasPortalAdvantage())
+                return false;
+
+            int tornadoDamage = p.TornadoDamage();
+
+            return tornadoDamage == target.CurrentHealth;
+        }
+
+        public static void UseTornadoes(bool aggressiveUse)
+        {
+            var portals = Enumerable.Empty<Portal>();
+            if (GameState.EnemyPortals.Count > 0)
+            {
+                portals = from portal in GetFreePortals()
+                          orderby portal.Distance(GetBestPortal(true))
+                          select portal;
+            }
+
+            foreach (Portal p in portals)
+            {
+                if (!p.ShouldUseTornado(aggressiveUse))
+                {
+                    continue;
+                }
+
+                if (!p.TrySummonTornado())
+                {
+                    GameState.SaveManaFor(CreatableObject.Tornado);
+                }
+            }
+        }
+
 
         /// <summary>
         /// does portals turn logic
@@ -88,32 +192,51 @@ namespace MyBot
             // summon at least one lava giant if no giants (summon from portal closest to enemy castle)
             if (GetFreePortals().Count == 0)
                 return;
-            if (GetMyTotalGiantsCount() == 0)
-                GetFreePortals().OrderBy(x => x.Distance(Bot.Game.GetEnemyCastle())).First().TrySummonLavaGiant();
-            // summon ice trolls according to enemy portal count and ice trolls count
-            if (GetFreePortals().Count == 0)
-                return;
-            var trollReq = GetEnemyTotalTrollsCount() + Bot.Game.GetEnemyPortals().Length;
-            var targets = Bot.Game.GetEnemyLivingElves().Cast<GameObject>();
-            targets = targets.Concat(Bot.Game.GetEnemyIceTrolls());
-            targets = targets.Concat(Bot.Game.GetEnemyLavaGiants());
-            targets = targets.Concat(Bot.Game.GetEnemyPortals());
-            //order troll portals by distance to nearest target
-            List<Portal> trollPortals;
-            if (targets.Any())
-                trollPortals = GetFreePortals().OrderBy(x => x.Distance(targets.OrderBy(v => v.Distance(x)).First())).ToList();
-            else
-                trollPortals = GetFreePortals();
-            foreach (Portal p in trollPortals)
-                if (GetMyTotalTrollsCount() < trollReq)
-                    p.TrySummonIceTroll();
-            if (GetMyTotalTrollsCount() >= trollReq || Bot.Game.GetMyMana() > 150)
-                foreach (Portal p in GetFreePortals().OrderBy(x => x.Distance(Bot.Game.GetEnemyCastle())))
-                {
-                    if (p.Distance(Bot.Game.GetEnemyCastle()) < 3000)
-                        p.TrySummonLavaGiant();
-                }
-        }
 
+            UseTornadoes(true);
+
+            IEnumerable<Portal> portals;
+
+            if (ShouldDefendCastle())
+            {
+                var defendLocation =
+                    GameState.MyCastle.Location.Towards(GetBestPortal(true),
+                                                        GameState.MyCastle.Size + GameState.Game.LavaGiantAttackRange);
+                portals = from portal in GetFreePortals()
+                          where portal.InRange(defendLocation, ElfExtensions.ATTACKING_RADIUS)
+                          orderby portal.Distance(defendLocation)
+                          select portal;
+
+                foreach (Portal portal in portals)
+                {
+                    if (!portal.TrySummonIceTroll(false))
+                    {
+                        GameState.SaveManaFor(CreatableObject.IceTroll);
+                    }
+                }
+
+            }
+
+            portals = from portal in GetFreePortals()
+                      orderby portal.Distance(GameState.EnemyCastle)
+                      select portal;
+
+            foreach (Portal portal in portals)
+            {
+                if (portal.IsGettingAttacked())
+                {
+                    if (!portal.TrySummonIceTroll())
+                    {
+                        GameState.SaveManaFor(CreatableObject.IceTroll);
+                    }
+                    continue;
+                }
+
+                if (portal.InRange(GameState.MyCastle, ElfExtensions.DEFENSIVE_RADIUS))
+                    continue;
+
+                portal.TrySummonLavaGiant();
+            }
+        }
     }
 }

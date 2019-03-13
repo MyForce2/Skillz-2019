@@ -12,6 +12,8 @@ namespace MyBot
 
         public static Game Game { get; private set; }
 
+        public static int StartingMana { get; private set; }
+
         public static int CurrentMana => GameState.Game.GetMyMana() - GameState.ReservedMana;
 
         public static int ReservedMana { get; private set; }
@@ -26,11 +28,18 @@ namespace MyBot
         public static List<LavaGiant> MyLivingLavaGiants { get; private set; }
         public static List<LavaGiant> EnemyLivingLavaGiants { get; private set; }
 
+
         public static List<IceTroll> MyLivingIceTrolls { get; private set; }
         public static List<IceTroll> EnemyLivingIceTrolls { get; private set; }
 
+        public static List<Tornado> MyLivingTornadoes { get; private set; }
+        public static List<Tornado> EnemyLivingTornadoes { get; private set; }
+
         public static List<Portal> MyPortals { get; private set; }
         public static List<Portal> EnemyPortals { get; private set; }
+
+        public static int CurrentlyBuiltFountains { get; set; }
+        public static int TotalFountains => GameState.Game.GetMyManaFountains().Length + GameState.CurrentlyBuiltFountains;
 
         public static IEnumerable<GameObject> AllLivingEnemies =>
             GameState.EnemyLivingElves.Cast<GameObject>().Concat(GameState.Game.GetEnemyCreatures());
@@ -49,13 +58,22 @@ namespace MyBot
                                                        .Count(p => p.Distance(GameState.Game.GetEnemyCastle()) <=
                                                                    ElfExtensions.ATTACKING_RADIUS);
 
-        #endregion
+        public static int EnemyDefensivePortals =>
+            GameState.EnemyPortals.Count(p => p.InRange(GameState.EnemyCastle, ElfExtensions.ATTACKING_RADIUS));
 
+        #endregion
+        
 
         public static void Update(Game game)
         {
             GameState.Game = game;
             GameState.ReservedMana = 0;
+            GameState.CurrentlyBuiltFountains = 0;
+
+            if (game.Turn == 1)
+            {
+                GameState.StartingMana = GameState.CurrentMana - game.DefaultManaPerTurn;
+            }
 
             GameState.MyCastle = game.GetMyCastle();
             GameState.EnemyCastle = game.GetEnemyCastle();
@@ -68,6 +86,9 @@ namespace MyBot
 
             GameState.MyLivingIceTrolls = game.GetMyIceTrolls().ToList();
             GameState.EnemyLivingIceTrolls = game.GetEnemyIceTrolls().ToList();
+
+            GameState.MyLivingTornadoes = game.GetMyTornadoes().ToList();
+            GameState.EnemyLivingTornadoes = game.GetEnemyTornadoes().ToList();
 
             GameState.MyPortals = game.GetMyPortals().ToList();
             GameState.EnemyPortals = game.GetEnemyPortals().ToList();
