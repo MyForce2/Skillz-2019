@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using ElfKingdom;
 
@@ -16,13 +16,14 @@ namespace MyBot
         MoveToBuildFountain,
         MoveToTarget,
         AttackTarget,
-        MoveToCastle
+        MoveToCastle,
+        RushFountain
     }
 
     public static class MissionExtensions
     {
 
-        public const int MAXIMUM_SAVING_MANA_TURNS = 4;
+        public static int MAXIMUM_SAVING_MANA_TURNS => GameState.Game.PortalBuildingDuration;
 
         private static readonly Dictionary<Elf, MapObject> MoveTargets =
             new Dictionary<Elf, MapObject>();
@@ -50,6 +51,21 @@ namespace MyBot
         public static Dictionary<Elf, Mission> ExecuteMissions(this IEnumerable<Elf> elves)
         {
             var missions = new Dictionary<Elf, Mission>();
+
+            ManaFountain fountain;
+            var fountainRusher = elves.Where(e => e.ShouldTargetFountain(out fountain) &&
+                                                  e.GetBestMission() != Mission.BuildFountain &&
+                                                  e.GetBestMission() != Mission.SaveForFountain)
+                                       .OrderBy(e => e.ShouldTargetFountain(out fountain)
+                                                    ? e.Distance(fountain)
+                                                    : int.MaxValue).FirstOrDefault();
+            if (fountainRusher != null)
+            {
+                missions[fountainRusher] = Mission.RushFountain;
+                Mission.RushFountain.ExecuteWith(fountainRusher);
+            }
+
+            elves = elves.Where(e => !missions.ContainsKey(e));
             foreach (Elf e in elves)
             {
                 Mission mission = e.GetBestMission();
@@ -134,6 +150,7 @@ namespace MyBot
             {
                 Mission mission = e.GetBestMission();
                 missions[e] = mission;
+                System.Console.WriteLine(mission);
                 mission.ExecuteWith(e);
             }
 
@@ -250,6 +267,42 @@ namespace MyBot
                 case Mission.SaveForFountain:
                     SaveForFountain(e);
                     break;
+                case Mission.RushFountain:
+                    RushFountain(e);
+                    break;
+            }
+        }
+
+        public static void RushFountain(Elf e)
+        {
+            ManaFountain fountain;
+            e.ShouldTargetFountain(out fountain);
+            if (e.InRange(fountain, e.MaxSpeed * 2))
+            {
+                double savingDuration = 1.0 * (GameState.Game.InvisibilityCost - GameState.CurrentMana) / GameState.Game.GetMyself().ManaPerTurn;
+                savingDuration = System.Math.Ceiling(savingDuration);
+                int duration = (int)System.Math.Max(savingDuration, 1);
+
+                if (!e.SafeNotToMove(duration))
+                {
+                    if (GameState.HasManaFor(CreatableObject.Invisibility))
+                    {
+                        e.CastInvisibility();
+                    }
+                    else
+                    {
+                        GameState.SaveManaFor(CreatableObject.Invisibility);
+                    }
+                }
+            }
+            if (!e.AlreadyActed && e.ShouldAttack(fountain) && e.InAttackRange(fountain))
+            {
+                e.Attack(fountain);
+            }
+            else if (!e.AlreadyActed)
+            {
+                MissionExtensions.MoveTargets[e] = fountain;
+                Mission.MoveToTarget.ExecuteWith(e);
             }
         }
 

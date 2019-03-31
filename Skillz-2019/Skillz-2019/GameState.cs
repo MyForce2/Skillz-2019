@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using ElfKingdom;
 
@@ -28,7 +28,6 @@ namespace MyBot
         public static List<LavaGiant> MyLivingLavaGiants { get; private set; }
         public static List<LavaGiant> EnemyLivingLavaGiants { get; private set; }
 
-
         public static List<IceTroll> MyLivingIceTrolls { get; private set; }
         public static List<IceTroll> EnemyLivingIceTrolls { get; private set; }
 
@@ -38,21 +37,14 @@ namespace MyBot
         public static List<Portal> MyPortals { get; private set; }
         public static List<Portal> EnemyPortals { get; private set; }
 
+        public static List<ManaFountain> MyManaFountains { get; private set; }
+        public static List<ManaFountain> EnemyManaFountains { get; private set; }
+
         public static int CurrentlyBuiltFountains { get; set; }
         public static int TotalFountains => GameState.Game.GetMyManaFountains().Length + GameState.CurrentlyBuiltFountains;
 
         public static IEnumerable<GameObject> AllLivingEnemies =>
             GameState.EnemyLivingElves.Cast<GameObject>().Concat(GameState.Game.GetEnemyCreatures());
-
-        public static int DefensivePortals => GameState.Game.GetMyPortals()
-                                                       .Count(p => p.Distance(GameState.Game.GetMyCastle()) <=
-                                                                   ElfExtensions.DEFENSIVE_RADIUS);
-
-        public static int NeutralPortals => GameState.Game.GetMyPortals()
-                                                     .Count(p => p.Distance(GameState.Game.GetMyCastle()) >
-                                                                 ElfExtensions.DEFENSIVE_RADIUS
-                                                                 && p.Distance(GameState.Game.GetMyCastle()) <=
-                                                                 ElfExtensions.NEUTRAL_RADIUS);
 
         public static int AttackingPortals => GameState.Game.GetMyPortals()
                                                        .Count(p => p.Distance(GameState.Game.GetEnemyCastle()) <=
@@ -62,7 +54,7 @@ namespace MyBot
             GameState.EnemyPortals.Count(p => p.InRange(GameState.EnemyCastle, ElfExtensions.ATTACKING_RADIUS));
 
         #endregion
-        
+
 
         public static void Update(Game game)
         {
@@ -92,6 +84,9 @@ namespace MyBot
 
             GameState.MyPortals = game.GetMyPortals().ToList();
             GameState.EnemyPortals = game.GetEnemyPortals().ToList();
+
+            GameState.MyManaFountains = game.GetMyManaFountains().ToList();
+            GameState.EnemyManaFountains = game.GetEnemyManaFountains().ToList();
         }
 
         /// <summary>

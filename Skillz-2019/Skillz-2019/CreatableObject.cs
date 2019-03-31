@@ -1,4 +1,4 @@
-﻿namespace MyBot
+namespace MyBot
 {
 
     public static class CreatableObjectExtensions

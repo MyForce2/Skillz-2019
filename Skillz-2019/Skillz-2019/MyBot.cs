@@ -6,8 +6,6 @@ namespace MyBot
 {
     public class Bot : ISkillzBot
     {
-        public const bool UseSpecificStrategies = true;
-
         public static Game Game
         {
             get; private set;
@@ -28,7 +26,7 @@ namespace MyBot
             {
                 foreach (Elf enemyLivingElf in GameState.EnemyLivingElves)
                 {
-                    if(enemyLivingElf.Invisible) continue;
+                    if (enemyLivingElf.Invisible) continue;
 
                     int distance = myLivingElf.Distance(enemyLivingElf);
                     Bot.LastTurnDistances[myLivingElf][enemyLivingElf] = distance;
@@ -47,6 +45,8 @@ namespace MyBot
                 System.Console.WriteLine(ElfExtensions.ATTACKING_RADIUS);
                 MissionExtensions.UpdateOptimalLocations();
                 System.Console.WriteLine("elf count: {0}", game.GetMyLivingElves().Length);
+
+                //PortalExtensions.DefendFountains();
 
                 var executedMissions = game.GetMyLivingElves().ExecuteMissions();
                 foreach (Elf e in executedMissions.Keys)

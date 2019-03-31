@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using ElfKingdom;
 
@@ -52,7 +52,7 @@ namespace MyBot
         {
             var circle = new Circle(obj.Location, obj.GetMaxSpeed());
             var locations = circle.GetCircleLocations().ToList();
-            if (obj.InRange(destination, obj.GetMaxSpeed()))
+            if(obj.InRange(destination, obj.GetMaxSpeed()))
                 locations.Add(destination.GetLocation());
             return (from location in locations
                     orderby GetPossibleAttackers(location, obj, exceptions).Count,
@@ -84,7 +84,7 @@ namespace MyBot
                     where !exceptions.Contains(enemy) &&
                           nextTurnLocation.InRange(location, enemy.GetAttackRange() + size) &&
                           enemy.CurrentHealth != enemy.GetSuffocationPerTurn() &&
-                          (!(enemy is IceTroll) || !(location is GameObject) || ((IceTroll)enemy).GetTarget().Equals((GameObject)location))
+                          (!(enemy is IceTroll) || !(location is GameObject) || ((IceTroll) enemy).GetTarget().Equals((GameObject) location))
                     select enemy).ToList();
         }
 
@@ -94,7 +94,7 @@ namespace MyBot
         /// <param name="objects"></param>
         /// <param name="location"></param>
         /// <returns></returns>
-        private static int DistanceSum(IEnumerable<GameObject> objects, Location location) =>
-            objects.Select(o => o.TurnsToReach(location)).DefaultIfEmpty(0).Sum();
+        private static int DistanceSum(IEnumerable<MapObject> objects, Location location) =>
+            objects.Select(o => o.Distance(location)).DefaultIfEmpty(0).Sum();
     }
 }

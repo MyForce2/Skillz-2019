@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Collections.Generic;
 using ElfKingdom;
 
@@ -13,18 +13,14 @@ namespace MyBot
 
         public const int EXCESS_MANA = 200;
 
-        public const int ATTACKING_THRESHOLD = 4;
-
         public static int MAX_FOUNTAINS => GameState.MyPortals.Count > 0 ? 3 : 2;
 
-        public const int MAX_DEFENSIVE_PORTALS = 1;
-        public const int MAX_NEUTRAL_PORTALS = 0;
         public const int MAX_ATTACKING_PORTALS = 2;
 
         public static int DEFENSIVE_RADIUS =>
             (int)System.Math.Ceiling(GameState.MyCastle.Distance(GameState.EnemyCastle) *
                                       ElfExtensions.DISTANCE_RATIO);
-        public const int NEUTRAL_RADIUS = 4000;
+
         public static int ATTACKING_RADIUS => (int)System.Math.Ceiling(GameState.MyCastle.Distance(GameState.EnemyCastle) *
             ElfExtensions.DISTANCE_RATIO);
 
@@ -178,9 +174,12 @@ namespace MyBot
             Location location;
             if (target is IceTroll || target is Elf)
             {
-                location = e.GetSafestPath(target, (GameObject)target);
+                location = e.GetSafestPath(target, (GameObject) target);
             }
-            else location = e.GetSafestPath(target);
+            else
+            {
+                location = e.GetSafestPath(target);
+            }
             e.MoveTo(location);
         }
 
@@ -216,11 +215,6 @@ namespace MyBot
             IEnumerable<GameObject> allTargets = ((GameObject[])GameState.Game.GetEnemyPortals())
                                                  .Concat(GameState.Game.GetEnemyManaFountains())
                                                  .Concat(GameState.EnemyLivingElves);
-
-            if (e.ShouldTargetFountain(out ManaFountain fountain))
-            {
-                return fountain;
-            }
 
             return (from target in allTargets
                     let attackLocation = e.GetAttackLocation(target)
@@ -279,7 +273,7 @@ namespace MyBot
         public static bool ShouldTargetFountain(this Elf e, out ManaFountain fountain)
         {
             var closestFountain = GameState.Game.GetEnemyManaFountains().OrderBy(e.Distance).FirstOrDefault();
-            if (closestFountain == null || true)
+            if (closestFountain == null)
             {
                 fountain = null;
                 return false;
